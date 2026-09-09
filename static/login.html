@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>用户登录</title>
+</head>
+
+<body>
+    <h2>用户登录</h2>
+    <div>
+        用户名：<input id="username" type="text" placeholder="输入用户名">
+    </div>
+    <div style="margin-top:8px">
+        密码：<input id="password" type="password" placeholder="输入密码">
+    </div>
+    <div style="margin-top:12px">
+        <button id="loginBtn">登录</button>
+    </div>
+
+    <script>
+        const loginBtn = document.getElementById("loginBtn");
+        const usernameInput = document.getElementById("username");
+        const passwordInput = document.getElementById("password");
+
+        loginBtn.addEventListener("click", async function () {
+            console.log("✅按钮被点击了！");
+            let username = usernameInput.value.trim();
+            let password = passwordInput.value.trim();
+            console.log("用户名：", usernameInput);
+            console.log("密码：", passwordInput);
+            if (!username || !password) {
+                console.log("用户名密码不能为空");
+                return;
+            }
+
+            try {
+                const resp = await fetch("/login", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: "username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password)
+                });
+
+                console.log("响应状态：", resp.status);
+
+                if (resp.redirected) {
+                    // 如果服务器返回重定向，手动跳转
+                    window.location.href = resp.url;
+                } else if (resp.ok) {
+                    const text = await resp.text();
+                    console.log("后端返回内容：", text);
+                    // 登录成功，跳转到个人中心
+                    window.location.href = "/profile";
+                } else {
+                    const text = await resp.text();
+                    console.log("登录失败", text);
+                    alert("登录失败：" + text);
+                }
+            } catch (err) {
+                console.error("请求异常", err);
+                alert("请求失败，请检查网络连接");
+            }
+        })
+    </script>
+</body>
+
+</html>
