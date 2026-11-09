@@ -1,0 +1,29 @@
+{{template "head" .}}
+<section>
+  <h2>留言板</h2>
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+  <div class="panel">
+    <form method="post" action="/guestbook" class="stack">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <label>留言内容<textarea name="content" rows="3" required maxlength="1000" placeholder="说点什么"></textarea></label>
+      <button class="btn primary" type="submit">提交留言</button>
+    </form>
+    <p class="muted">
+      内容原样入库，展示时由 html/template 自动转义。你可以试着提交
+      <code>&lt;script&gt;alert(1)&lt;/script&gt;</code>，页面只会把它当成文本显示。
+    </p>
+  </div>
+
+  <div class="panel">
+    {{range .Data.Result.Items}}
+    <div class="note">
+      <div class="note-meta">{{.Username}} · {{datetime .CreatedAt}}</div>
+      <div class="note-body">{{.Content}}</div>
+    </div>
+    {{else}}
+    <p class="muted">还没有留言。</p>
+    {{end}}
+    {{template "pager" .}}
+  </div>
+</section>
+{{template "foot" .}}

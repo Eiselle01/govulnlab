@@ -1,0 +1,33 @@
+{{template "head" .}}
+<section>
+  <h2>CSRF <span class="cwe">CWE-352</span></h2>
+  <p class="muted">
+    这个接口会修改你当前的靶场昵称，但<strong>完全不校验 CSRF Token</strong>，
+    也不校验 Origin。只要受害者已登录，任何第三方页面都能替他提交表单。
+  </p>
+
+  <div class="panel">
+    <dl class="kv">
+      <dt>当前昵称</dt><dd>{{with .Data.Nickname}}{{.}}{{else}}（未设置）{{end}}</dd>
+    </dl>
+    {{with .Data.OK}}<p class="ok">昵称已更新（说明跨站请求成功了）。</p>{{end}}
+    <form method="post" action="/lab/csrf/profile" class="row-form">
+      <label>新昵称<input name="nickname" required maxlength="64"></label>
+      <button class="btn danger" type="submit">修改昵称（无 Token）</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h3>复现步骤</h3>
+    <ol class="steps">
+      <li>在本站登录（受害者已有会话 Cookie）。</li>
+      <li>打开 <a href="/lab/csrf/attacker">攻击者页面</a>（或把它另存为本地 HTML，用另一个端口打开，模拟第三方站点）。</li>
+      <li>页面自动向 <code>/lab/csrf/profile</code> 提交表单，昵称被改掉。</li>
+    </ol>
+    <p class="muted">
+      修复对照：<a href="/account/password">修改密码</a>接口同时要求登录 + CSRF Token + Origin 校验，
+      缺少任一条件即 403。
+    </p>
+  </div>
+</section>
+{{template "foot" .}}

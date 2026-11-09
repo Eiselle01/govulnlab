@@ -1,15 +1,52 @@
-# 数据库配置
+# GoVulnLab 配置
+#
+# 优先级：默认值 < 本文件 < 环境变量（前缀 GVL_，层级用下划线，例如 GVL_DB_PASSWORD）
+# 敏感信息（数据库口令）请用环境变量注入，不要提交到仓库。
+
+app:
+  name: govulnlab
+  env: dev              # dev / prod，仅用于日志与提示
+  addr: ":8080"
+  read_timeout_sec: 15
+  write_timeout_sec: 30
+  idle_timeout_sec: 60
+  shutdown_sec: 10
+  body_limit_bytes: 1048576   # 1MB
+  auto_migrate: true
+
+log:
+  level: info           # debug / info / warn / error
+  format: text          # text（本地）/ json（生产采集）
+
 db:
-  driver: "mysql"
-  dsn: "root:Qing5201314.@tcp(127.0.0.1:3306)/go_security_lab?charset=utf8mb4&parseTime=true"
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: ""          # 用 GVL_DB_PASSWORD 覆盖，不要写死在仓库
+  name: govulnlab
+  max_open_conns: 25
+  max_idle_conns: 10
+  conn_max_lifetime_min: 30
 
-
-# redis配置
 redis:
-  addr: "127.0.0.1:6379"
+  addr: 127.0.0.1:6379
   password: ""
   db: 0
+  pool_size: 10
 
-# session设置
 session:
-  ttl_hour: 2
+  cookie_name: gvl_session
+  ttl_minutes: 120
+  secure: false         # 生产 HTTPS 环境必须改为 true
+
+security:
+  login_max_fail: 5
+  login_block_minutes: 15
+  password_min_len: 10
+  global_rate_per_sec: 20
+  global_burst: 40
+  trust_proxy: false    # 在 Nginx 后面部署时改为 true，才会信任 X-Forwarded-For
+
+lab:
+  enabled: true         # 生产环境必须 false
+  allow_remote: false   # 默认只允许 127.0.0.1 访问靶场

@@ -1,0 +1,31 @@
+{{template "head" .}}
+<section>
+  <h2>个人中心</h2>
+  <div class="panel">
+    <dl class="kv">
+      <dt>用户名</dt><dd>{{.Session.Username}}</dd>
+      <dt>用户 ID</dt><dd>{{.Session.UserID}}</dd>
+      <dt>角色</dt><dd>{{if eq .Session.Role "admin"}}管理员{{else}}普通用户{{end}}</dd>
+      {{with .Data.User}}<dt>注册时间</dt><dd>{{datetime .CreatedAt}}</dd>{{end}}
+    </dl>
+    <p class="muted">会话保存在 Redis，Cookie 中只有一个随机 ID，且 HttpOnly 不可被 JS 读取。</p>
+  </div>
+
+  <div class="panel">
+    <h3>当前 CSRF Token</h3>
+    <p class="mono break">{{.CSRF}}</p>
+    <p class="muted">
+      这个 Token 会在登录时生成、与 Redis 会话绑定。任何写操作都必须携带它：
+      表单放 <code>csrf_token</code> 字段，AJAX 放 <code>X-CSRF-Token</code> 头。
+      跨站攻击者读不到它，所以伪造不了请求。
+    </p>
+  </div>
+
+  <div class="links-row">
+    <a class="btn" href="/account/password">修改密码</a>
+    <a class="btn" href="/orders">我的订单</a>
+    <a class="btn" href="/audit">操作审计</a>
+    {{if eq .Session.Role "admin"}}<a class="btn" href="/admin/orders">管理后台</a>{{end}}
+  </div>
+</section>
+{{template "foot" .}}

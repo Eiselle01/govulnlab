@@ -1,0 +1,98 @@
+# docker compose 一键起：MySQL + Redis + 应用
+#
+#   cp .env.example .env      # 改掉里面的口令
+#   docker compose up -d --build
+#   docker compose logs -f app
+#   docker compose --profile tools run --rm seed   # 初始化演示数据
+#   docker compose down       # 停止（数据保留在 volume）
+
+services:
+  mysql:
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-govulnlab}
+      TZ: Asia/Shanghai
+    ports:
+      # 只绑本机：不要把这个端口暴露到公网
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # 用 mysqladmin ping 判断“真的能接受连接”，而不是只看端口是否打开
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-local}
+    image: govulnlab:local
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      GVL_DB_HOST: mysql
+      GVL_DB_PORT: "3306"
+      GVL_DB_USER: root
+      GVL_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      GVL_DB_NAME: ${DB_NAME:-govulnlab}
+      GVL_REDIS_ADDR: redis:6379
+      GVL_APP_ADDR: ":8080"
+      GVL_LOG_FORMAT: json
+      # 在容器里跑，靶场只绑在容器内部；需要演示时通过端口映射 + allow_remote 显式打开
+      GVL_LAB_ENABLED: "true"
+      GVL_LAB_ALLOW_REMOTE: "false"
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # 一次性任务：迁移 + 写入演示数据。用 profile 隔离，避免每次 up 都跑。
+  seed:
+    image: govulnlab:local
+    profiles: ["tools"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      GVL_DB_HOST: mysql
+      GVL_DB_PORT: "3306"
+      GVL_DB_USER: root
+      GVL_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      GVL_DB_NAME: ${DB_NAME:-govulnlab}
+      GVL_REDIS_ADDR: redis:6379
+      GVL_SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@123456}
+      GVL_SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-Demo@123456}
+    command: ["-config", "/etc/govulnlab/config.yaml", "-cmd", "seed"]
+
+volumes:
+  mysql-data:
+  redis-data:

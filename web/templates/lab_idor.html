@@ -1,0 +1,38 @@
+{{template "head" .}}
+<section>
+  <h2>水平越权 <span class="cwe">CWE-639</span></h2>
+  <p class="muted">
+    接口只按订单 id 查询，不判断订单归属。登录任意账号后，把 id 改成别人的订单 id 就能读到数据。
+  </p>
+
+  <div class="panel">
+    <dl class="kv">
+      <dt>当前登录用户</dt><dd>{{.Session.Username}}（id={{.Session.UserID}}）</dd>
+    </dl>
+    <form method="get" action="/lab/idor" class="row-form">
+      <label>订单 id<input name="id" value="{{.Data.OrderID}}" inputmode="numeric" placeholder="1"></label>
+      <button class="btn danger" type="submit">查看订单</button>
+    </form>
+    <p class="muted">试试 id=1、2、3……总能读到不属于你的订单。</p>
+  </div>
+
+  {{with .Data.Order}}
+  <div class="panel danger-panel">
+    <h3>读到订单</h3>
+    <dl class="kv">
+      <dt>订单 id</dt><dd>{{.ID}}</dd>
+      <dt>归属用户 id</dt><dd>{{.UserID}}{{if ne .UserID $.Session.UserID}} ← 不是当前用户！{{end}}</dd>
+      <dt>订单号</dt><dd class="mono">{{.OrderNo}}</dd>
+      <dt>商品</dt><dd>{{.GoodsName}}</dd>
+      <dt>金额</dt><dd>{{money .AmountCent}} 元</dd>
+    </dl>
+    <p class="muted">
+      修复方式：在 service 层统一校验 <code>order.UserID == session.UserID</code>，
+      不匹配时返回 404（不泄露“订单存在”这一事实）。
+    </p>
+  </div>
+  {{end}}
+
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+</section>
+{{template "foot" .}}

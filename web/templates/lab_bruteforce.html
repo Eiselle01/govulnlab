@@ -1,0 +1,32 @@
+{{template "head" .}}
+<section>
+  <h2>暴力破解 <span class="cwe">CWE-307</span></h2>
+  <p class="muted">
+    该登录接口不做失败计数、不做锁定、不做限流（仅受全局令牌桶约束）。
+    配合 <code>scripts/lab-bruteforce.ps1</code> 可以一次性尝试多组口令。
+  </p>
+
+  <div class="panel">
+    <form method="post" action="/lab/bruteforce" class="row-form">
+      <label>用户名<input name="username" value="{{.Data.Username}}" placeholder="labadmin"></label>
+      <label>密码<input name="password" placeholder="猜一个"></label>
+      <button class="btn danger" type="submit">尝试登录</button>
+    </form>
+    <dl class="kv">
+      <dt>本次进程内累计尝试</dt><dd>{{.Data.Attempts}}</dd>
+    </dl>
+    {{with .Data.User}}<p class="ok">命中口令：{{.Password}}（靶场内部计数，不写库）</p>{{end}}
+    {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+  </div>
+
+  <div class="panel">
+    <h3>对照修复</h3>
+    <ul>
+      <li>失败计数：同一 IP + 账号 5 次失败锁定 15 分钟（Redis 计数，见 <code>service/auth.go</code>）。</li>
+      <li>凭证错误统一话术，避免账号枚举；用户不存在也做一次 bcrypt 比较，抹平时间差。</li>
+      <li>接口级令牌桶限流，配合 <code>Retry-After</code> 头。</li>
+      <li>生产再加验证码 / 双因素 / 异地登录提醒。</li>
+    </ul>
+  </div>
+</section>
+{{template "foot" .}}

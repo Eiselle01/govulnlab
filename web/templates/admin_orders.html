@@ -1,0 +1,25 @@
+{{template "head" .}}
+<section>
+  <h2>后台 · 全部订单</h2>
+  <p class="muted">该页面受 RequireAdmin 中间件保护，同时每次访问都会写入审计日志。</p>
+  <div class="panel">
+    <table>
+      <tr><th>ID</th><th>订单号</th><th>下单人</th><th>商品</th><th>金额（元）</th><th>状态</th><th>创建时间</th></tr>
+      {{range .Data.Result.Items}}
+      <tr>
+        <td>{{.ID}}</td>
+        <td class="mono">{{.OrderNo}}</td>
+        <td>{{.Username}}</td>
+        <td>{{.GoodsName}}</td>
+        <td>{{money .AmountCent}}</td>
+        <td><span class="badge s{{.Status}}">{{.StatusText}}</span></td>
+        <td>{{datetime .CreatedAt}}</td>
+      </tr>
+      {{else}}
+      <tr><td colspan="7" class="muted">暂无订单</td></tr>
+      {{end}}
+    </table>
+    {{template "pager" .}}
+  </div>
+</section>
+{{template "foot" .}}

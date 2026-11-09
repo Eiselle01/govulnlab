@@ -1,0 +1,37 @@
+{{template "head" .}}
+<section>
+  <h2>SQL 注入 <span class="cwe">CWE-89</span></h2>
+  <p class="muted">靶场表 <code>lab_users</code> 使用明文口令（真实系统必须 bcrypt），以便演示完整的注入绕过。</p>
+
+  <div class="panel">
+    <form method="post" action="/lab/sqli" class="row-form">
+      <label>用户名<input name="username" value="{{.Data.Username}}" placeholder="admin' OR '1'='1' -- "></label>
+      <label>密码<input name="password" value="{{.Data.Password}}" placeholder="随便填"></label>
+      <button class="btn danger" type="submit">执行注入</button>
+    </form>
+    <p class="muted">推荐 payload：<code>admin' OR '1'='1' -- </code>（注意 -- 后面有一个空格）</p>
+  </div>
+
+  {{with .Data.SQL}}
+  <div class="panel">
+    <h3>服务端实际执行的 SQL</h3>
+    <pre class="code">{{.}}</pre>
+    <p class="muted">这就是漏洞的本质：用户输入变成了 SQL 语法的一部分。</p>
+  </div>
+  {{end}}
+
+  {{with .Data.Result}}
+  <div class="panel ok-panel">
+    <h3>注入成功</h3>
+    <dl class="kv">
+      <dt>命中的用户 ID</dt><dd>{{.ID}}</dd>
+      <dt>用户名</dt><dd>{{.Username}}</dd>
+      <dt>角色</dt><dd>{{.Role}}</dd>
+    </dl>
+    <p class="muted">修复方式：把拼接改成占位符查询 <code>WHERE username = ? AND password = ?</code>，见 docs/SECURITY.md。</p>
+  </div>
+  {{end}}
+
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+</section>
+{{template "foot" .}}

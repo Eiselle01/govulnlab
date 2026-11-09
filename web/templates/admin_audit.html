@@ -1,0 +1,24 @@
+{{template "head" .}}
+<section>
+  <h2>后台 · 全局审计日志</h2>
+  <p class="muted">按时间倒序。request_id 可与访问日志、错误日志逐条对上。</p>
+  <div class="panel">
+    <table>
+      <tr><th>时间</th><th>用户ID</th><th>动作</th><th>详情</th><th>IP</th><th>request_id</th></tr>
+      {{range .Data.Result.Items}}
+      <tr>
+        <td>{{datetime .CreatedAt}}</td>
+        <td>{{.UserID}}</td>
+        <td class="mono">{{.Action}}</td>
+        <td>{{.Detail}}</td>
+        <td class="mono">{{.IP}}</td>
+        <td class="mono">{{.RequestID}}</td>
+      </tr>
+      {{else}}
+      <tr><td colspan="6" class="muted">暂无记录</td></tr>
+      {{end}}
+    </table>
+    {{template "pager" .}}
+  </div>
+</section>
+{{template "foot" .}}

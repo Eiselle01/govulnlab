@@ -1,0 +1,38 @@
+{{template "head" .}}
+<section>
+  <h2>我的订单</h2>
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+
+  <div class="panel">
+    <h3>新建订单</h3>
+    <form method="post" action="/orders" class="row-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+      <label>商品<input name="goodsname" required maxlength="128" placeholder="例如：机械键盘"></label>
+      <label>金额（元）<input name="amount" required inputmode="decimal" placeholder="99.90"></label>
+      <button class="btn primary" type="submit">下单</button>
+    </form>
+    <p class="muted">金额按字符串解析为「分」入库，全链路不出现 float。</p>
+  </div>
+
+  <div class="panel">
+    <table>
+      <tr><th>订单号</th><th>商品</th><th>金额（元）</th><th>状态</th><th>创建时间</th><th>操作</th></tr>
+      {{range .Data.Result.Items}}
+      <tr>
+        <td class="mono">{{.OrderNo}}</td>
+        <td>{{.GoodsName}}</td>
+        <td>{{money .AmountCent}}</td>
+        <td><span class="badge s{{.Status}}">{{.StatusText}}</span></td>
+        <td>{{datetime .CreatedAt}}</td>
+        <td><a href="/orders/{{.ID}}">详情</a></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="6" class="muted">暂无订单</td></tr>
+      {{end}}
+    </table>
+    {{template "pager" .}}
+  </div>
+
+  <p class="muted">订单详情与取消都会在服务层校验归属：别人的订单对你来说「不存在」（404 而不是 403）。</p>
+</section>
+{{template "foot" .}}

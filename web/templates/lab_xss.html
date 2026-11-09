@@ -1,0 +1,32 @@
+{{template "head" .}}
+<section>
+  <h2>存储型 XSS <span class="cwe">CWE-79</span></h2>
+  <p class="muted">下面两栏用同一份数据：左边是漏洞实现（不转义），右边是安全实现（html/template 自动转义）。</p>
+
+  <div class="panel">
+    <form method="post" action="/lab/xss" class="row-form">
+      <label>留言<input name="content" required placeholder="&lt;script&gt;alert('xss')&lt;/script&gt;"></label>
+      <button class="btn danger" type="submit">写入</button>
+    </form>
+  </div>
+
+  <div class="two-col">
+    <div class="panel danger-panel">
+      <h3>漏洞版（template.HTML 直出）</h3>
+      {{range .Data.Unsafe}}<div class="note-body">{{.}}</div>{{else}}<p class="muted">暂无数据</p>{{end}}
+    </div>
+    <div class="panel ok-panel">
+      <h3>安全版（自动转义）</h3>
+      {{range .Data.Notes}}<div class="note-body">{{.Content}}</div>{{else}}<p class="muted">暂无数据</p>{{end}}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>为什么转义有效</h3>
+    <p class="muted">
+      <code>&lt;script&gt;</code> 被转义成 <code>&amp;lt;script&amp;gt;</code> 后，浏览器只把它当文本，不会解析成标签。
+      再叠加 CSP（<code>script-src 'self' 'nonce-xxx'</code>），即使某处漏转义，注入脚本也拿不到 nonce 无法执行。
+    </p>
+  </div>
+</section>
+{{template "foot" .}}

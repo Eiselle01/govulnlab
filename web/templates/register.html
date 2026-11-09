@@ -1,0 +1,13 @@
+{{template "head" .}}
+<section class="narrow">
+  <h2>注册</h2>
+  {{with .Data.Error}}<p class="alert">{{.}}</p>{{end}}
+  <form method="post" action="/auth/register" class="stack">
+    <label>用户名<input name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_]+"></label>
+    <label>密码<input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="72"></label>
+    <label>确认密码<input name="password2" type="password" autocomplete="new-password" required minlength="10" maxlength="72"></label>
+    <button class="btn primary" type="submit">注册</button>
+  </form>
+  <p class="muted">密码至少 10 位，且必须同时包含字母和数字；服务端用 bcrypt(cost=12) 存哈希。</p>
+</section>
+{{template "foot" .}}

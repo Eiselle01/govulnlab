@@ -1,0 +1,56 @@
+# GoVulnLab 的 systemd 单元文件
+#
+# 安装：
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin govulnlab
+#   sudo install -d -o govulnlab -g govulnlab /etc/govulnlab /var/log/govulnlab
+#   sudo install -m 0755 bin/govulnlab /usr/local/bin/govulnlab
+#   sudo install -m 0640 -o govulnlab -g govulnlab deploy/systemd/govulnlab.env /etc/govulnlab/govulnlab.env
+#   sudo install -m 0640 -o govulnlab -g govulnlab config.yaml /etc/govulnlab/config.yaml
+#   sudo systemctl daemon-reload && sudo systemctl enable --now govulnlab
+#   sudo systemctl status govulnlab
+
+[Unit]
+Description=GoVulnLab - Go 安全靶场与安全实践示例服务
+Documentation=https://github.com/Eiselle01/go-security-lab
+After=network-online.target mysql.service redis.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=govulnlab
+Group=govulnlab
+WorkingDirectory=/etc/govulnlab
+
+# 口令等敏感配置放这里，文件权限 0640，不进仓库
+EnvironmentFile=/etc/govulnlab/govulnlab.env
+
+ExecStart=/usr/local/bin/govulnlab -config /etc/govulnlab/config.yaml -cmd serve
+
+# 优雅关闭：先 SIGTERM 让进程把在途请求处理完（代码里做了 10s 宽限）
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+Restart=on-failure
+RestartSec=3
+
+# ---- 最小权限加固 ----
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/log/govulnlab
+
+# 输出走 journald：journalctl -u govulnlab -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

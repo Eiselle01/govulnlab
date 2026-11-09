@@ -1,0 +1,57 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · GoVulnLab</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="nav">
+  <a class="brand" href="/">Go<span>Vuln</span>Lab</a>
+  <nav class="links">
+    <a href="/orders">订单</a>
+    <a href="/guestbook">留言板</a>
+    <a href="/audit">审计</a>
+    <a href="/lab">靶场</a>
+    {{if .Session}}{{if eq .Session.Role "admin"}}<a href="/admin/orders">后台</a>{{end}}{{end}}
+  </nav>
+  <div class="nav-right">
+    {{if .Session}}
+      <span class="who">{{.Session.Username}}{{if eq .Session.Role "admin"}} · admin{{end}}</span>
+      <a href="/profile">个人中心</a>
+      <form method="post" action="/auth/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+        <button type="submit" class="link">退出</button>
+      </form>
+    {{else}}
+      <a href="/login">登录</a>
+      <a class="primary-link" href="/register">注册</a>
+    {{end}}
+  </div>
+</header>
+<main>
+{{end}}
+
+{{define "foot"}}
+</main>
+<footer class="foot">
+  <span>GoVulnLab · Go 安全靶场与加固对照平台</span>
+  <span>教学用途：漏洞模块默认仅允许本机访问</span>
+</footer>
+</body>
+</html>
+{{end}}
+
+{{define "pager"}}
+{{with .Data.Result}}
+  {{if gt .Total 0}}
+  <div class="pager">
+    <span>共 {{.Total}} 条 · 第 {{.Page}}/{{.TotalPages}} 页</span>
+    {{if .HasPrev}}<a href="?page={{sub .Page 1}}&size={{.Size}}">上一页</a>{{end}}
+    {{if .HasNext}}<a href="?page={{add .Page 1}}&size={{.Size}}">下一页</a>{{end}}
+  </div>
+  {{end}}
+{{end}}
+{{end}}

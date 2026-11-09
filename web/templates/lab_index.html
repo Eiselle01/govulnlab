@@ -1,0 +1,36 @@
+{{template "head" .}}
+<section>
+  <h2>漏洞靶场</h2>
+  <p class="muted">
+    靶场模块默认只允许本机（127.0.0.1 / ::1）访问，生产环境请把 <code>lab.enabled</code> 设为 false。
+    每个模块都提供：漏洞入口、复现提示、对应安全实现、修复说明。
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h3>SQL 注入 <span class="cwe">CWE-89</span></h3>
+      <p>用户名直接拼进 SQL，可用 <code>' OR '1'='1</code> 绕过登录。</p>
+      <p><a class="btn" href="/lab/sqli">复现</a> <a class="btn ghost" href="/login">安全实现</a></p>
+    </div>
+    <div class="card">
+      <h3>存储型 XSS <span class="cwe">CWE-79</span></h3>
+      <p>留言原样渲染，<code>&lt;script&gt;</code> 会被执行。</p>
+      <p><a class="btn" href="/lab/xss">复现</a> <a class="btn ghost" href="/guestbook">安全实现</a></p>
+    </div>
+    <div class="card">
+      <h3>CSRF <span class="cwe">CWE-352</span></h3>
+      <p>改昵称接口没有 Token 校验，第三方页面可伪造请求。</p>
+      <p><a class="btn" href="/lab/csrf">复现</a> <a class="btn ghost" href="/account/password">安全实现</a></p>
+    </div>
+    <div class="card">
+      <h3>水平越权 <span class="cwe">CWE-639</span></h3>
+      <p>订单详情只按 id 查询，不校验归属用户。</p>
+      <p><a class="btn" href="/lab/idor">复现</a> <a class="btn ghost" href="/orders">安全实现</a></p>
+    </div>
+    <div class="card">
+      <h3>暴力破解 <span class="cwe">CWE-307</span></h3>
+      <p>登录无失败计数、无锁定，可无限次尝试。</p>
+      <p><a class="btn" href="/lab/bruteforce">复现</a> <a class="btn ghost" href="/login">安全实现</a></p>
+    </div>
+  </div>
+</section>
+{{template "foot" .}}

@@ -1,0 +1,24 @@
+{{template "head" .}}
+<section>
+  <h2>我的操作审计</h2>
+  <p class="muted">只展示属于当前用户的记录。管理员可以在后台查看全量日志。</p>
+  <div class="panel">
+    <table>
+      <tr><th>时间</th><th>动作</th><th>详情</th><th>IP</th><th>request_id</th></tr>
+      {{range .Data.Result.Items}}
+      <tr>
+        <td>{{datetime .CreatedAt}}</td>
+        <td class="mono">{{.Action}}</td>
+        <td>{{.Detail}}</td>
+        <td class="mono">{{.IP}}</td>
+        <td class="mono">{{.RequestID}}</td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="muted">暂无记录</td></tr>
+      {{end}}
+    </table>
+    {{template "pager" .}}
+  </div>
+  {{if eq .Session.Role "admin"}}<p><a class="btn" href="/admin/audit">查看全局审计日志</a></p>{{end}}
+</section>
+{{template "foot" .}}

@@ -1,0 +1,52 @@
+{{template "head" .}}
+<section class="hero">
+  <p class="tag">Go · net/http · MySQL · Redis</p>
+  <h1>安全靶场与加固对照平台</h1>
+  <p class="lead">
+    同一个业务，两套实现：<strong>安全实现</strong>用于跑通完整业务链路，
+    <strong>靶场实现</strong>故意保留 SQL 注入、存储型 XSS、CSRF、越权、无锁定登录五类典型漏洞，
+    供你复现、定位、修复，并在审计日志里留下痕迹。
+  </p>
+  <div class="cta">
+    {{if .Session}}
+      <a class="btn primary" href="/orders">进入业务系统</a>
+      <a class="btn" href="/lab">进入靶场</a>
+    {{else}}
+      <a class="btn primary" href="/login">登录</a>
+      <a class="btn" href="/register">注册账号</a>
+    {{end}}
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card">
+    <h3>分层架构</h3>
+    <p>handler → service → store 三层，中间件链统一处理 request_id、日志、恢复、会话、CSRF、限流。</p>
+  </div>
+  <div class="card">
+    <h3>服务端会话</h3>
+    <p>Redis 存储会话，Cookie 只放 256 bit 随机 ID；登录与改密时轮换会话，防会话固定。</p>
+  </div>
+  <div class="card">
+    <h3>审计可追溯</h3>
+    <p>每条关键操作写入 audit_log，带 IP、UA、request_id，能与访问日志逐条对账。</p>
+  </div>
+  <div class="card">
+    <h3>可部署</h3>
+    <p>支持 Docker Compose 一键起 MySQL + Redis + App，也提供裸机 systemd + Nginx 方案。</p>
+  </div>
+</section>
+
+<section class="panel">
+  <h3>五类漏洞与修复对照</h3>
+  <table>
+    <tr><th>漏洞</th><th>靶场入口</th><th>根因</th><th>修复手段</th></tr>
+    <tr><td>SQL 注入</td><td><a href="/lab/sqli">/lab/sqli</a></td><td>SQL 字符串拼接</td><td>参数化查询</td></tr>
+    <tr><td>存储型 XSS</td><td><a href="/lab/xss">/lab/xss</a></td><td>输出未转义</td><td>html/template 自动转义 + CSP</td></tr>
+    <tr><td>CSRF</td><td><a href="/lab/csrf">/lab/csrf</a></td><td>无 Token / 无 Origin 校验</td><td>Synchronizer Token + SameSite</td></tr>
+    <tr><td>水平越权</td><td><a href="/lab/idor">/lab/idor</a></td><td>只按 id 查询不校验归属</td><td>服务层统一归属校验 + 404</td></tr>
+    <tr><td>暴力破解</td><td><a href="/lab/bruteforce">/lab/bruteforce</a></td><td>无失败计数与锁定</td><td>Redis 计数 + 令牌桶限流</td></tr>
+  </table>
+  <p class="muted">完整原理、复现命令与修复代码见 <code>docs/SECURITY.md</code>。</p>
+</section>
+{{template "foot" .}}
