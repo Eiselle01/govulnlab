@@ -2,6 +2,8 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -9,6 +11,7 @@ import (
 type User struct {
 	ID       int
 	Username string
+	Role 	string
 	Password string //存bcrypt哈希字符串，不是明文
 }
 
@@ -20,22 +23,28 @@ func InitDB(sqlDB *sql.DB) {
 }
 
 // CreateUser 注册：新建用户，传入用户名、明文密码，内部生成bcrypt哈希存入数据库
-func CreateUser(username string, rawPassword string) error {
+func CreateUser(username string, rawPassword string) (int64, error) {
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(rawPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return 0,err
 	}
 	hashPwd := string(hashBytes)
 
-	_, err = db.Exec(`INSERT INTO users(username,password) VALUES(?,?)`, username, hashPwd)
-	return err
+	res, err := db.Exec(`INSERT INTO users(username,password) VALUES(?,?)`, username, hashPwd)
+	if err!=nil{
+		fmt.Errorf("用户创建失败，用户名可能被占用")
+		return 0, err
+	}
+	userId, err :=res.LastInsertId()
+	
+	return userId, err
 }
 
 // QueryUserByName 根据用户名查询用户，返回用户结构体
 func QueryUserByName(username string) (*User, error) {
 	var u User
-	row := db.QueryRow(`SELECT id,username,password FROM users WHERE username = ?`, username)
-	err := row.Scan(&u.ID, &u.Username, &u.Password)
+	row := db.QueryRow(`SELECT id,username,role,password FROM users WHERE username = ?`, username)
+	err := row.Scan(&u.ID, &u.Username, &u.Role,&u.Password)
 	if err != nil {
 		return nil, err
 	}

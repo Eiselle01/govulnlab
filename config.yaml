@@ -1,0 +1,15 @@
+# 数据库配置
+db:
+  driver: "mysql"
+  dsn: "root:Qing5201314.@tcp(127.0.0.1:3306)/go_security_lab?charset=utf8mb4&parseTime=true"
+
+
+# redis配置
+redis:
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+
+# session设置
+session:
+  ttl_hour: 2

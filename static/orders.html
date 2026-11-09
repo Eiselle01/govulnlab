@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>新建订单</title>
+</head>
+
+<body>
+    <h2>新建订单</h2>
+    <div>
+        <label>商品名称：</label>
+        <input id="goodsname" type="text">
+    </div>
+    <div style="margin-top:8px">
+        <label>金额：</label>
+        <input id="amount" type="number">
+    </div>
+    <button id="submitBtn" style="margin-top:8px">提交订单</button>
+    <div id="msg"></div>
+
+    <script>
+        // 获取DOM元素
+        const submitBtn = document.getElementById('submitBtn');
+        const msgDom = document.getElementById('msg');
+
+        submitBtn.onclick = async function () {
+            const goodsname = document.getElementById('goodsname').value.trim();
+            const amount = parseInt(document.getElementById('amount').value);
+
+            // fetch 调用go后端api
+            const res = await fetch("/api/order/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json", // 告诉后端请求体是JSON
+                },
+                body: JSON.stringify({
+                    goodsname: goodsname,
+                    amount: amount
+                })
+            });
+            const data = await res.json();
+            console.log(data);
+
+            if (data.code === 0) {
+                msgDom.innerText = "创建成功！订单号：" + data.data.OrderNo;
+            } else {
+                msgDom.innerText = "失败：" + data.msg;
+            }
+        }
+    </script>
+</body>
+
+</html>

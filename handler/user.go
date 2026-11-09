@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -30,115 +32,112 @@ func RootHandler(w http.ResponseWriter, r *http.Request) {
 // 注册接口
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		fmt.Fprintf(w, "请使用post")
+		pkg.ErrorJson(w, "请使用post方式提交")
 		return
 	}
 	err := r.ParseForm()
 	if err != nil {
-		fmt.Fprintf(w, "解析表单失败")
+		pkg.ErrorJson(w, "解析表单失败")
 		return
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		fmt.Fprintf(w, "用户名或密码不能为空")
+		pkg.ErrorJson(w, "用户名或密码不能为空")
 		return
 	}
-	err = model.CreateUser(username, password)
+	_, err = model.CreateUser(username, password)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "注册失败，用户名可能已被占用", http.StatusConflict)
+		pkg.ErrorJson(w, "注册失败，用户名可能已被占用")
 		return
 	}
 
-	// // bcrypt对密码进行哈希处理，存储哈希值而不是明文密码
-	// hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	// if err != nil {
-	// 	http.Error(w, "密码处理失败", http.StatusInternalServerError)
-	// 	return
-	// }
-	// hashPwd := string(hashBytes)
-
-	// _, err = pkg.DB.Exec(`INSERT INTO users(username,password) VALUES(?, ?)`, username, hashPwd)
-	// if err != nil {
-	// 	// 插入失败，一般是用户名重复（UNIQUE约束）
-	// 	http.Error(w, "注册失败，用户名可能已被占用", http.StatusConflict)
-	// 	return
-	// }
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, "请前往登录页面登录：<a href=\"/static/login.html\">登录</a>")
+	fmt.Fprintf(w, `{"ok":true,"msg":"注册成功"}`)
 	return
 }
 
-// 登录接口
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		fmt.Fprintf(w, "请使用POST方式提交登录")
+		pkg.ErrorJson(w, "请使用POST方式提交登录")
 		return
 	}
 	err := r.ParseForm()
 	if err != nil {
-		fmt.Fprintf(w, "表单解析失败")
+		pkg.ErrorJson(w, "解析表单失败")
 		return
 	}
 
 	username := r.FormValue("username")
 	password := r.FormValue("password")
+	fmt.Printf("[DEBUG] 收到登录: username=%s, password=%s\n", username, password) //新增打印
 
 	if username == "" || password == "" {
-		fmt.Fprintf(w, "用户名密码不能为空")
+		pkg.ErrorJson(w, "用户名或密码不能为空")
 		return
+
 	}
 
-	// 去数据库查询这条用户记录，?占位符填入用户名
 	user, err := model.QueryUserByName(username)
 	if err != nil {
-		// 查询不到这个用户
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "登录失败，用户名或密码错误", http.StatusUnauthorized)
+		fmt.Println("[DEBUG] 查询用户失败，", err)
+
+		pkg.ErrorJson(w, "用户不存在")
 		return
 	}
+	fmt.Println("[DEBUG] 查询用户成功，数据库用户：", user.Username)
 
-	// 判断密码是否相等
-	// err = bcrypt.CompareHashAndPassword([]byte(hashPwd), []byte(password))
 	if !model.CheckPassword(user.Password, password) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "登录失败，用户名或密码错误", http.StatusUnauthorized)
+		fmt.Println("[DEBUG] 密码校验失败")
+		pkg.ErrorJson(w, "登录失败，密码校验失败，用户名或密码错误")
 		return
 	}
-
+	fmt.Println("[DEBUG] 密码校验通过，准备session")
+	// 后面你原来生成sid、设置cookie代码不动
 	sid, err := pkg.GenSessionID()
+	fmt.Println("【登录生成sid】sid=", sid)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "会话ID创建失败", http.StatusInternalServerError)
+
+		pkg.ErrorJson(w, "会话id创建失败")
 		return
 	}
 	csrfToken, err := pkg.GenSessionID()
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "会话csrf-token创建失败", http.StatusInternalServerError)
+		pkg.ErrorJson(w, "会话csrf-token创建失败")
 		return
 	}
 
 	sessionData := pkg.SessionData{
+		UserID:    user.ID,
 		Username:  username,
 		CsrfToken: csrfToken,
+		Role:      user.Role,
 	}
 
 	jsonstr, err := json.Marshal(sessionData)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "会话序列化失败", http.StatusInternalServerError)
+		pkg.ErrorJson(w, "会话序列化失败")
 		return
 	}
 
 	err = pkg.RedisCli.Set(pkg.GlobalCtx, sid, jsonstr, 2*time.Hour).Err() // 设置过期时间为2小时
+	fmt.Printf("【登录保存session】sid=%s, setErr=%v\n", sid, err)
 	if err != nil {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		http.Error(w, "会话存储失败", http.StatusInternalServerError)
+		pkg.ErrorJson(w, "会话存储失败")
 		return
 	}
+	// 登录成功之后，写审计日志
+	err = model.InsertAuditLog(sessionData.UserID, "用户登录", "登陆成功", r.RemoteAddr)
+	log.Printf("【审计日志调试】准备写入audit，userID=%d", user.ID)
+	if err != nil {
+		log.Printf("【审计日志ERROR】err = %v", err)
+		log.Printf("警告：审计日志写入失败，但登录成功，不阻断流程")
+		// w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		// w.Write([]byte("登陆操作写入审计日志失败"))
+		// ❗重点：这里不要return、不要弹窗！直接往下走，设置cookie跳转页面
+	}
+	// 设置Cookie，跳转首页
 	http.SetCookie(w, &http.Cookie{
 		Name:     "mysession",
 		Value:    sid,
@@ -147,55 +146,33 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		// SameSite: http.SameSiteLaxMode,
 	})
-	// w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	//登录成功，写审计日志
-	_ = model.InsertAuditLog(username, "用户登录")
-	http.Redirect(w, r, "/profile", http.StatusFound)
+	// http.Redirect(w, r, "/profile", http.StatusFound)
+	// 密码不对的时候
+	w.Header().Set("Content-Type", "application/json;charset=utf-8")
+	w.Write([]byte(`{"ok":true,"msg":"登陆成功"}`))
 	return
-	// 设置完cookie、redis写入完成之后
-	// w.Header().Set("Content-Type", "text/plain")
-	// w.WriteHeader(http.StatusOK)
-	// _, _ = w.Write([]byte("ok"))
-	// return
-	// fmt.Fprintf(w, "✅登录成功！欢迎 %s <br><a href=\"/profile\">访问个人中心</a>", username)
+
 }
-
-// func PwdPageHandler(w http.ResponseWriter, r *http.Request) {
-// 	// 读取cookie sid，从redis拿到sessionData
-// 	sessionData, ok := getSessionFromRedis(r)
-// 	if !ok {
-// 		http.Redirect(w, r, "/login.html", http.StatusFound)
-// 		return
-// 	}
-// 	myCsrf := sessionData["csrf_token"]
-
-// 	html := `
-// <!DOCTYPE html>
-// <html>
-// <body>
-// <h2>修改密码</h2>
-// <form method="POST" action="/changePwd">
-// 	<input type="hidden" name="csrf_token" value="` + myCsrf + `">
-// 	旧密码:<input type="password" name="oldpwd"><br>
-// 	新密码:<input type="password" name="newpwd"><br>
-// 	<button type="submit">提交修改</button>
-// </form>
-// </body>
-// </html>
-// `
-// 	w.Header().Set("Content-Type", "text/html;charset=utf-8")
-// 	w.Write([]byte(html))
-// }
 
 //个人中心
 func ProfileHandler(w http.ResponseWriter, r *http.Request) {
+	// fmt.Println("✅ 我成功进到ProfileHandler了！！")
+
 	w.Header().Set("Content-Type", "text/html;charset=utf-8")
+
+	// rawVal := r.Context().Value(pkg.SessionCtxKey)
+	// fmt.Printf("【DEBUG】ctx取出原始值类型: %T, 值=%v\n", rawVal, rawVal)
 	session, ok := pkg.GetSessionFromCtx(r.Context())
+	// fmt.Printf("【DEBUG】ok=%v, session=%v\n", ok, session)
 	if !ok {
+		fmt.Println("【DEBUG】!!!! 进入跳转分支")
 		http.Redirect(w, r, "/static/login.html", http.StatusFound)
 		return
 	}
-
+	err := model.InsertAuditLog(session.UserID, "进入个人中心", "查看成功", r.RemoteAddr)
+	if err != nil {
+		log.Printf("【个人中心审计写入失败】err=%v", err)
+	}
 	fmt.Fprintf(w, `
 	<h2>👤个人中心</h2>
 	<p>欢迎用户：%s</p>
@@ -203,62 +180,13 @@ func ProfileHandler(w http.ResponseWriter, r *http.Request) {
 	<p><a href="/logout">退出登录</a></p>
 	<p><a href="/guestbook">留言板</a></p>
 	<p><a href="/audit">查看我的操作日志</a></p>
+
 	<form method="POST" action="/logout">
 		<input type="hidden" name="csrf_token" value="%s">
 		<button type="submit">退出登录</button>
 	</form>
 	`, session.Username, session.CsrfToken)
-	//注意：原来的 redisCli → pkg.RedisCli ；globalCtx → pkg.GlobalCtx
-	// 读取浏览器带过来的cookie
-	// cookie, err := r.Cookie("mysession")
-	// if err != nil {
-	// 	// cookie不存在，未登录
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	fmt.Fprintf(w, "🔒未登录，请先<a href=\"/static/login.html\">登录</a>")
-	// 	return
-	// }
-	// sid := cookie.Value
-	// 去session map查询
-	// val, err := pkg.RedisCli.Get(pkg.GlobalCtx, sid).Result()
-	// if err == redis.Nil {
-	// 	// key不存在：会话过期 / 登出
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	fmt.Fprintf(w, "🔒会话无效，请重新<a href=\"/static/login.html\">登录</a>")
-	// 	return
-	// }
-	// if err != nil {
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	fmt.Fprintf(w, "Redis查询错误")
-	// 	return
-	// }
-
-	// // json反序列化取出用户名、csrfToken
-	// var data map[string]string
-	// err = json.Unmarshal([]byte(val), &data)
-	// if err != nil {
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	fmt.Fprintf(w, "会话解析错误")
-	// 	return
-	// }
-	// username := data["username"]
-	// csrfToken := data["csrf_token"]
-	// // sessionMutex.Lock()
-	// // data, ok := sessionStore[sid]
-	// // sessionMutex.Unlock()
-
-	// // if !ok {
-	// // 	fmt.Fprintf(w, "🔒会话无效，请重新<a href=\"/static/login.html\">登录</a>")
-	// // 	return
-	// // }
-	// // username := data.Username
-	// // // 走到这里：合法已登录用户
-	// w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// fmt.Fprintf(w, `<h2>个人中心页面</h2>
-	// <p>你已经登录，当前用户名：%s</p>
-	// <p>CSRF Token: %s</p>
-	// <p><a href="/logout">退出登录</a></p>`, username, csrfToken)
 }
-
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 
 	// cookie, err := r.Cookie("mysession")
@@ -266,7 +194,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// 	sid := cookie.Value
 
 	session, err := pkg.GetSessionFromCtx(r.Context())
-	if !err   {
+	if !err {
 		http.Redirect(w, r, "/static/login.html", http.StatusFound)
 		return
 	}
@@ -280,20 +208,19 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	// pkg.RedisCli.Del(pkg.GlobalCtx, sid).Err() // 删除redis中的会话，key为sid
 	//从cookie拿到原始sid，redis的key就是sid
 	cookie, er := r.Cookie("mysession")
-	if er == nil {
-		sid := cookie.Value
-		//删除redis中的会话，key为sid
-		_ = pkg.RedisCli.Del(pkg.GlobalCtx, sid).Err()
+	if er != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("读取cookie失败"))
+		return
 	}
-	// 	// 删除后端session记录
-	// 	sessionMutex.Lock()
-	// 	delete(sessionStore, sid)
-	// 	sessionMutex.Unlock()
-	// }
-
-	// 删除Redis中的会话
-	// err = pkg.RedisCli.Del(pkg.GlobalCtx, sid).Err()
-
+	sid := cookie.Value
+	//删除redis中的会话，key为sid
+	ok := pkg.RedisCli.Del(pkg.GlobalCtx, sid).Err()
+	if ok != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("会话删除失败"))
+		return
+	}
 	// 清空浏览器端cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "mysession",
@@ -303,10 +230,15 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
-	// w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// fmt.Fprintf(w, "已退出登录 <a href=\"/\">返回首页</a>")
+	fmt.Fprintf(w, "已退出登录 <a href=\"/\">返回首页</a>")
+
 	//销毁redis会话之后
-	_ = model.InsertAuditLog(session.Username, "退出登录")
+	er = model.InsertAuditLog(session.UserID, "退出登录", "退出成功", r.RemoteAddr)
+	if er != nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte("删除会话操作写入日志失败"))
+		return
+	}
 	http.Redirect(w, r, "/static/login.html", http.StatusFound)
 }
 
@@ -317,22 +249,23 @@ func PwdPageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	html := `
-<!DOCTYPE html>
-<html>
-<body>
-<h2>修改密码</h2>
-<form method="POST" action="/changePwd">
-	<input type="hidden" name="csrf_token" value="` + session.CsrfToken + `">
-	旧密码:<input type="password" name="oldpwd"><br>
-	新密码:<input type="password" name="newpwd"><br>
-	<button type="submit">提交修改</button>
-</form>
-</body>
-</html>
-`
-	w.Header().Set("Content-Type", "text/html;charset=utf-8")
-	w.Write([]byte(html))
+	// 2. 加载模板文件
+	tpl, err := template.ParseFiles("static/pwd.html")
+	if err != nil {
+		http.Error(w, "模板加载失败"+err.Error(), 500)
+		return
+	}
+
+	// 3. 往模板传入数据，渲染页面
+	data := map[string]any{
+		"CsrfToken": session.CsrfToken,
+	}
+	err = tpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "渲染页面失败"+err.Error(), 500)
+		return
+
+	}
 }
 
 //更改用户密码，危险版😒
@@ -340,28 +273,25 @@ func PwdPageHandler(w http.ResponseWriter, r *http.Request) {
 func ChangePwdHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
-		fmt.Fprintf(w, "禁止GET访问，请通过表单POST提交")
+		pkg.ErrorHtml(w, "禁止GET访问，请通过表单POST提交")
 		return
 	}
 	err := r.ParseForm()
 	if err != nil {
-		fmt.Fprintf(w, "解析表单失败")
+		pkg.ErrorHtml(w, "解析表单失败")
 		return
 	}
 
 	// 1.鉴权：读取cookie拿到sid
-	session, ok := pkg.GetSessionFromCtx(r.Context())
+	session, ok := pkg.MustGetSession(w, r)
 	if !ok {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, "🔒未登录 <a href=\"/static/login.html\">去登录</a>")
-		return
+		pkg.ErrorHtml(w, "鉴权失败，未查询到session")
 	}
 	// CSRF校验，从POST表单拿csrf_token
 	serverCsrf := session.CsrfToken
 	clientCsrf := r.FormValue("csrf_token")
 	if clientCsrf != serverCsrf {
-		fmt.Fprintf(w, "❌CSRF‑Token校验失败，拒绝请求！")
-		return
+		pkg.ErrorHtml(w, "❌CSRF‑Token校验失败，拒绝请求！")
 	}
 
 	username := session.Username
@@ -369,85 +299,30 @@ func ChangePwdHandler(w http.ResponseWriter, r *http.Request) {
 	newPwd := r.FormValue("newpwd")
 
 	if oldPwd == "" || newPwd == "" {
-		fmt.Fprintf(w, "旧密码、新密码不能为空")
-		return
+		pkg.ErrorHtml(w, "新旧密码不能为空")
 	}
 
 	// 1.查询该用户
 	user, err := model.QueryUserByName(username)
 	if err != nil {
-		fmt.Fprintf(w, "用户查询失败")
-		return
+		pkg.ErrorHtml(w, "未查询到该用户")
 	}
 	//校验旧密码是否正确
 	if !model.CheckPassword(user.Password, oldPwd) {
-		fmt.Fprintf(w, "旧密码错误")
-		return
+		pkg.ErrorHtml(w, "旧密码错误")
 	}
 
 	// 2.调用model完成密码更新（内部做bcrypt哈希）
 	err = model.UpdateUserPwd(username, newPwd)
 	if err != nil {
-		fmt.Fprintf(w, "密码修改失败：%v", err)
-		return
+		pkg.ErrorHtml(w, "修改密码失败")
 	}
 	fmt.Fprintf(w, "✅密码修改成功！<br><a href=\"/profile\">个人中心</a>")
 	//写审计日志
-	_ = model.InsertAuditLog(username, "修改密码")
+	err = model.InsertAuditLog(session.UserID, "修改密码", "修改成功", r.RemoteAddr)
+	if err != nil {
+		pkg.ErrorHtml(w, "修改密码操作写入审计日志失败")
+	}
 	fmt.Fprintf(w, "✅密码修改成功！<br><a href=\"/profile\">个人中心</a>")
-	// sessionMutex.Lock()
-	// data, ok := sessionStore[sid]
-	// sessionMutex.Unlock()
-	// if !ok {
-	// 	fmt.Fprintf(w, "🔒会话失效 <a href=\"/static/login.html\">去登录</a>")
-	// 	return
-	// }
-	// val, err := pkg.RedisCli.Get(pkg.GlobalCtx, sid).Result()
-	// if err == redis.Nil {
-	// 	fmt.Fprintf(w, "🔒会话失效 <a href=\"/static/login.html\">去登录</a>")
-	// 	return
-	// }
-	// if err != nil {
-	// 	fmt.Fprintf(w, "redis查询错误")
-	// 	return
-	// }
-	// //核心：要用csrf验证用户
-	// // if data.CsrfToken != r.URL.Query().Get("csrf") {
-	// // 	fmt.Fprintf(w, "🔒CSRF验证失败，请不要随意访问此链接")
-	// // 	return
-	// // }
-	// var data map[string]string
-	// err = json.Unmarshal([]byte(val), &data)
-	// if err != nil {
-	// 	fmt.Fprintf(w, "会话解析错误")
-	// 	return
-	// }
-	// username := data["username"]
-	// dbCsrf := data["csrf_token"] // 从redis拿到服务端保存的csrf
 
-	// // 从url查询参数拿浏览器传过来的csrf
-	// getCsrf := r.URL.Query().Get("csrf")
-	// if getCsrf != dbCsrf {
-	// 	fmt.Fprintf(w, "❌CSRF‑Token校验失败，拒绝请求！")
-	// 	return
-	// }
-
-	// // 获取GET参数 newpwd
-	// newPwd := r.URL.Query().Get("newpwd")
-	// if newPwd == "" {
-	// 	fmt.Fprintf(w, `
-	// 	<h2>修改密码</h2>
-	// 	<p>当前用户：%s</p>
-	// 	<p>正确访问示例 /changePwd?newpwd=123456&csrf=%s 即可把密码改成123456</p>
-	// 	`, username, dbCsrf)
-	// 	return
-	// }
-
-	// // 更新数据库用户密码
-	// _, err = pkg.DB.Exec(`UPDATE users SET password = ? WHERE username = ?`, newPwd, username)
-	// if err != nil {
-	// 	fmt.Fprintf(w, "修改失败：%v", err)
-	// 	return
-	// }
-	// fmt.Fprintf(w, "✅密码修改成功！新密码：%s <br><a href=\"/profile\">个人中心</a>", newPwd)
 }

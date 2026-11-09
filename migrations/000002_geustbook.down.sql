@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS guestbook;
+DROP TABLE IF EXISTS audit;

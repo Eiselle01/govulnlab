@@ -43,25 +43,39 @@
                     },
                     body: "username=" + encodeURIComponent(username) + "&password=" + encodeURIComponent(password)
                 });
-
                 console.log("响应状态：", resp.status);
+                // const data = resp.json()
 
-                if (resp.redirected) {
-                    // 如果服务器返回重定向，手动跳转
-                    window.location.href = resp.url;
-                } else if (resp.ok) {
-                    const text = await resp.text();
-                    console.log("后端返回内容：", text);
-                    // 登录成功，跳转到个人中心
-                    window.location.href = "/profile";
+                // console.log("后端返回内容：", data);
+
+                //     // 判断后端业务逻辑是否成功（JSON里的ok字段）
+                //     if (data.ok) {
+                //         console.log("登录成功，msg：", data.msg);
+                //         window.location.href = "/profile";
+                //     } else {
+                //         // 业务失败：账号密码错之类
+                //         alert("登录失败:" + data.msg);
+                //     }
+
+                // } catch (err) {
+                //     // 网络错误、后端返回不是合法JSON才会进到这里
+                //     console.error("请求异常", err);
+                //     alert("请求失败，请检查网络连接");
+                // } console.log("status=", res.status)
+                // 先把原始文本打出来，看看后端到底发了啥
+                const rawText = await resp.text()
+                console.log("后端原始返回：", rawText)
+                // 手动尝试解析
+                const data = JSON.parse(rawText)
+                console.log("解析后的data：", data)
+                if (data.ok) {
+                    window.location.href = "/profile"
                 } else {
-                    const text = await resp.text();
-                    console.log("登录失败", text);
-                    alert("登录失败：" + text);
+                    alert("登录失败:" + data.msg)
                 }
             } catch (err) {
-                console.error("请求异常", err);
-                alert("请求失败，请检查网络连接");
+                console.error("异常：", err)
+                alert("请求异常:" + err)
             }
         })
     </script>

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"database/sql"
+	// "database/sql"
 )
 
 // GuestBook 留言板结构体，对应guestbook表
@@ -12,16 +12,16 @@ type GuestBook struct {
 }
 
 // CreateGuestBookTable 创建留言板表，程序启动调用
-func CreateGuestBookTable(db *sql.DB) error {
-	sqlStr := `
-CREATE TABLE IF NOT EXISTS guestbook (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	username TEXT NOT NULL,
-	content TEXT NOT NULL
-);`
-	_, err := db.Exec(sqlStr)
-	return err
-}
+// func CreateGuestBookTable(db *sql.DB) error {
+// 	sqlStr := `
+// CREATE TABLE IF NOT EXISTS guestbook (
+// 	id INTEGER PRIMARY KEY AUTO_INCREMENT,
+// 	username TEXT NOT NULL,
+// 	content TEXT NOT NULL
+// );`
+// 	_, err := db.Exec(sqlStr)
+// 	return err
+// }
 
 // AddMessage 添加一条留言
 func AddMessage(username string, content string) error {

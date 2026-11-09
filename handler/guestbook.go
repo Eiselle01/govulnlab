@@ -1,9 +1,9 @@
-	package handler
+package handler
 
 import (
 	"fmt"
 	"net/http"
-	
+
 	"github.com/Eiselle01/go-security-lab/model"
 	"github.com/Eiselle01/go-security-lab/pkg"
 )
@@ -11,12 +11,15 @@ import (
 	//获取get参数 msg，浏览器访问 /guestbook?msg=xxx
 	// msg := r.URL.Query().Get("msg")
 	//鉴权，必须登录才能留言
-	session, ok := pkg.GetSessionFromCtx(r.Context())
-	if  !ok {
-		http.Redirect(w, r, "/static/login.html", http.StatusFound)
-		return
-	}
-
+	// session, ok := pkg.GetSessionFromCtx(r.Context())
+	// if  !ok {
+	// 	http.Redirect(w, r, "/static/login.html", http.StatusFound)
+	// 	return
+	// }
+		session, ok := pkg.MustGetSession(w, r)
+		if !ok {
+			return
+		}
 	if r.Method == http.MethodPost {
 		//POST提交留言：CSRF校验
 		err := r.ParseForm()
@@ -43,7 +46,7 @@ import (
 			return
 		}
 		//提交留言成功，记录审计
-		_ = model.InsertAuditLog(session.Username, "提交留言")
+		_ = model.InsertAuditLog(session.UserID, "提交留言","提交成功", r.RemoteAddr)
 
 		//提交完成刷新页面
 		http.Redirect(w, r, "/guestbook", http.StatusFound)

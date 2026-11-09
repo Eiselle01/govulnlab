@@ -41,13 +41,21 @@
                     method: "POST",
                     body: formData
                 });
-                const text = await res.text();
-                alert("后端返回结果:" + text);
+                const data = await res.json();
+                if (data.ok) {
+                    alert(data.msg);
+                    // 自动跳登录页
+                    window.location.href = "/login";
+                } else {
+                    alert("注册失败：" + data.msg);
+                }
             } catch (error) {
-                console.error("请求失败:", error);
+                console.error("请求失败:", error)
+                alert("网络异常")
             }
+        }
 
-        })
+        )
     </script>
 </body>
 

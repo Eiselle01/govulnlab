@@ -28,8 +28,10 @@ func GenSessionID() (string, error) {
 
 // SessionData Redis存储的会话结构体，代替map，强类型
 type SessionData struct {
-	Username  string `json:"username"`
-	CsrfToken string `json:"csrf_token"`
+	UserID    int    `json:"UserID"`
+	Username  string `json:"Username"`
+	Role      string `json: Role`
+	CsrfToken string `json:"CsrfToken"`
 }
 
 // GetSessionFromRedis 读取http请求，拿到sid cookie，从redis读取会话
@@ -62,6 +64,20 @@ func GetSessionFromRedis(r *http.Request) (*SessionData, bool, error) {
 		fmt.Printf("❌ JSON 反序列化失败: %v\n", err)
 		return nil, false, err
 	}
+	// 加这一行！打印解析完的data
+	fmt.Printf("【DEBUG】Unmarshal后 data=%+v\n", data)
+	// 新建副本，分配新内存！
+	copyData := data
+	r = r.WithContext(context.WithValue(r.Context(), SessionCtxKey, &copyData))
+	return &copyData, true, nil
 
-	return &data, true, nil
+}
+
+// GetSessionFromCtx 在handler内部获取session信息
+func GetSessionFromCtx(ctx context.Context) (*SessionData, bool) {
+	s, ok := ctx.Value(SessionCtxKey).(*SessionData)
+	if !ok {
+		return nil, false
+	}
+	return s, true
 }
