@@ -55,20 +55,18 @@ func (s *OrderService) Create(ctx context.Context, userID int64, goodsName, amou
 	return o, nil
 }
 
-// Detail 查询订单详情。不属于当前用户时返回 404 而不是 403：
+// Detail 查询订单详情。归属校验在 SQL 里完成，查不到时返回 404 而不是 403：
 // 403 等于告诉攻击者“这个订单存在，只是你没权限”，方便他枚举 id 做规模探测。
 func (s *OrderService) Detail(ctx context.Context, userID, orderID int64) (*store.Order, error) {
-	o, err := s.st.GetOrder(ctx, orderID)
+	o, err := s.st.GetOrder(ctx, orderID, userID)
 	if err != nil {
 		if isErr(err, store.ErrNotFound) {
+			// 这里已无法区分“订单不存在”和“不是你的订单”，正是想要的效果：
+			// 两种情况对外表现一致，攻击者拿不到任何“这个 id 存在”的信号。
+			s.log.Warn("订单不存在或越权访问被拦截", "user_id", userID, "order_id", orderID)
 			return nil, apperr.NotFound("订单不存在")
 		}
 		return nil, apperr.Internal("查询订单失败", err)
-	}
-	if o.UserID != userID {
-		s.log.Warn("检测到订单越权访问尝试",
-			"user_id", userID, "order_id", orderID, "owner_id", o.UserID)
-		return nil, apperr.NotFound("订单不存在")
 	}
 	return o, nil
 }

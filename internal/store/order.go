@@ -58,12 +58,14 @@ func (s *Store) CreateOrder(ctx context.Context, o *Order, audit AuditLog) error
 	return nil
 }
 
-// GetOrder 按订单 id 查询，联表带出用户名。
-func (s *Store) GetOrder(ctx context.Context, orderID int64) (*Order, error) {
+// GetOrder 按订单 id + 归属用户查询，联表带出用户名。
+// 归属条件写进 SQL（WHERE o.id = ? AND o.user_id = ?）：数据库替我们判断“这条订单是不是你的”，
+// 而不是先查出来再在 Go 里 if 比较——少一次两步逻辑，也不把“订单存在但不属于你”的信息带回应用层。
+func (s *Store) GetOrder(ctx context.Context, orderID, userID int64) (*Order, error) {
 	q := `SELECT ` + orderColumns + `, u.username
 	      FROM orders o JOIN users u ON o.user_id = u.id
-	      WHERE o.id = ?`
-	return scanOrder(s.DB.QueryRowContext(ctx, q, orderID))
+	      WHERE o.id = ? AND o.user_id = ?`
+	return scanOrder(s.DB.QueryRowContext(ctx, q, orderID, userID))
 }
 
 // ListOrdersByUser 分页查询某用户自己的订单，按创建时间倒序。
