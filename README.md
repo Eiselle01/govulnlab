@@ -4,6 +4,7 @@
 > 并把这套代码按生产工程标准交付——分层架构、MySQL 迁移、Redis 会话、CSRF/限流/审计、Docker 部署、CI 与端到端测试。
 
 <p>
+  <a href="https://github.com/Eiselle01/govulnlab/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Eiselle01/govulnlab/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Go" src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go&logoColor=white">
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white">
   <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white">
