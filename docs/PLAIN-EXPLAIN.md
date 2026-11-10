@@ -302,3 +302,75 @@ docker compose logs -f app      # 看日志
 1. **这个项目 = 一个能用的网站 + 一个故意写坏的对照版**，同一套业务，两份代码，能指到行。
 2. **漏洞的本质是"数据和命令没分开"**：SQL 注入是输入变成了 SQL，XSS 是输入变成了 HTML，越权是身份没参与查询条件。
 3. **CI 是自动批改作业，Docker 是打包盒**——两个都是"以后再说也不影响现在"的工具，现在这套已经能跑、能演示、能讲。
+
+---
+
+## 9. 技术栈到底用了什么（含"为什么没用 Gin"）
+
+### 9.1 真实依赖清单（`go.mod` 原文，只有 5 个直接依赖）
+
+| 依赖 | 干什么 | 用在哪 |
+| --- | --- | --- |
+| `go-sql-driver/mysql` | 连 MySQL 的驱动 | `internal/store/` |
+| `redis/go-redis/v9` | 连 Redis 的客户端 | `internal/session/`、`middleware/ratelimit.go`、`service/auth.go` |
+| `spf13/viper` | 读 yaml + 环境变量合并 | `internal/config/config.go` |
+| `google/uuid` | 生成 request_id / 会话 id 的随机数 | `middleware/accesslog.go`、`session/session.go` |
+| `golang.org/x/crypto` | bcrypt 密码哈希 | `service/auth.go`、`seed/seed.go` |
+
+其余全是上面这些的间接依赖，没有 Web 框架。
+
+### 9.2 项目用到的技术，以及各自在干什么
+
+| 技术 | 在项目里的角色 | 具体代码位置 |
+| --- | --- | --- |
+| **Go 1.26 标准库 `net/http`** | Web 服务器 + 路由 + 中间件 | `cmd/govulnlab/main.go`、`internal/handler/router.go` |
+| **MySQL 8** | 业务数据（用户/订单/留言/审计） | `migrations/*.sql`、`internal/store/*.go` |
+| **Redis 7** | 会话存储、限流令牌桶、登录失败计数 | `internal/session/session.go`、`middleware/ratelimit.go`、`service/auth.go` |
+| **html/template** | 服务端渲染 20 个页面，自动转义 | `web/templates/`、`internal/webui/render.go` |
+| **Docker / compose** | 三个容器一键起 | `Dockerfile`、`docker-compose.yml` |
+| **GitHub Actions** | CI：格式/检查/测试/构建/镜像 | `.github/workflows/ci.yml` |
+| **Nginx + systemd** | 反向代理、TLS、进程守护 | `deploy/nginx/`、`deploy/systemd/` |
+
+### 9.3 为什么没用 Gin（面试可以直接这么说）
+
+Gin 解决三件事：**路由**、**中间件**、**上下文（Context）**。这三件标准库也能做，只是写法长短不同：
+
+| 能力 | Gin 的写法 | 本项目的写法 |
+| --- | --- | --- |
+| 路由 + 路径参数 | `r.POST("/orders/:id/cancel", h)` + `c.Param("id")` | `mux.Handle("POST /orders/{id}/cancel", h)` + `r.PathValue("id")`（Go 1.22 起标准库自带） |
+| 中间件 | `r.Use(Auth())`，顺序隐式 | `middleware.Chain(mw1, mw2, ...)`，顺序写死、看得见 |
+| 请求上下文 | `c.Set("user", u)` | `reqctx` 包 + `r.Context()`，类型安全 |
+| JSON 响应 | `c.JSON(200, obj)` | `httpx.JSON(w, status, obj)`，统一信封 |
+| 参数绑定/校验 | `c.ShouldBindJSON(&req)` | `httpx.DecodeJSON`（拒绝未知字段）+ 手写规则 |
+
+**不用的四个真实理由**：
+
+1. **要能直接改响应头**：安全头、CSP nonce、`X-Request-ID` 都写在 `http.ResponseWriter.Header()` 上，标准库最直接。
+2. **要能精确控制中间件顺序**：`RequestID → ClientIP → Recover → AccessLog → SecurityHeaders → BodyLimit → LoadSession → RateLimit`，这个顺序每条都有理由，写在 `Chain()` 里一眼可见。
+3. **依赖越少，攻击面越小**：这是安全项目的基本取舍，`go.mod` 只有 5 个直接依赖。
+4. **区分度**：面试里"我知道 Gin 解决什么，也能不用框架搭出等价结构"比"我用过 Gin"更能说明你懂原理。
+
+**如果目标岗位 JD 明写 Gin**：加进来约 500 行改动（`router.go` 换 `gin.Engine`、所有 handler 签名换成 `*gin.Context`、中间件签名跟着换），属于"锦上添花"，不影响现有的安全实现和测试。
+
+---
+
+## 10. 重命名：到底要改几个地方
+
+重命名不是改文件夹名那么简单，一共有 4 个地方，前 3 个已经做完了：
+
+| 改什么 | 现在状态 | 怎么改 |
+| --- | --- | --- |
+| ① Go 模块名（代码里 `import` 的路径） | ✅ 已改成 `github.com/Eiselle01/govulnlab` | `go.mod` 第 1 行 |
+| ② 编译产物名 | ✅ 已是 `bin/govulnlab.exe` | `Makefile` / `Dockerfile` |
+| ③ 文档标题与说明 | ✅ 已全部改为 GoVulnLab | `README.md` 等 |
+| ④ GitHub 仓库名（别人看到的地址） | ❌ 仍是 `go-security-lab` | GitHub 网页 Settings → Rename |
+
+第 ④ 步的操作顺序：
+
+1. GitHub 仓库页 → **Settings** → **Repository name** 填 `govulnlab` → **Rename**
+2. 本地把"地址簿"改掉：`git remote set-url origin https://github.com/Eiselle01/govulnlab.git`
+3. 确认：`git remote -v` 两行都显示新地址
+4. `git push`
+5. 刷新仓库页面：文件结构变成 `internal/ cmd/ web/`，Actions 出现绿勾
+
+> 本地文件夹名 `go-security-lab` 改不改都行。改了之后所有命令里的路径要同步换；不想折腾就保留，简历上写的是仓库名，不是文件夹名。
