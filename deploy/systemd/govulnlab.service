@@ -11,7 +11,7 @@
 
 [Unit]
 Description=GoVulnLab - Go 安全靶场与安全实践示例服务
-Documentation=https://github.com/Eiselle01/go-security-lab
+Documentation=https://github.com/Eiselle01/govulnlab
 After=network-online.target mysql.service redis.service
 Wants=network-online.target
 

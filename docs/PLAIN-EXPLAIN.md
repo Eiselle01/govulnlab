@@ -363,7 +363,7 @@ Gin 解决三件事：**路由**、**中间件**、**上下文（Context）**。
 | ① Go 模块名（代码里 `import` 的路径） | ✅ 已改成 `github.com/Eiselle01/govulnlab` | `go.mod` 第 1 行 |
 | ② 编译产物名 | ✅ 已是 `bin/govulnlab.exe` | `Makefile` / `Dockerfile` |
 | ③ 文档标题与说明 | ✅ 已全部改为 GoVulnLab | `README.md` 等 |
-| ④ GitHub 仓库名（别人看到的地址） | ❌ 仍是 `go-security-lab` | GitHub 网页 Settings → Rename |
+| ④ GitHub 仓库名（别人看到的地址） | ✅ 已改为 `govulnlab`（旧地址自动跳转） | GitHub 网页 Settings → Rename |
 
 第 ④ 步的操作顺序：
 
